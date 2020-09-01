@@ -29,7 +29,7 @@ class BotModel:
         self.from_id = from_id
         print('[DEBUG-MODEL]: The model is initialized with the following data: \n '
               '[DEBUG-MODEL]: text - ' + str(self.text) + '\n '
-              '[DEBUG-MODEL]: from_id - ' + str(self.from_id) + '\n ')
+                                                          '[DEBUG-MODEL]: from_id - ' + str(self.from_id) + '\n ')
 
     def test(self):
         """ Метод проверки работоспособности бота """
@@ -201,41 +201,34 @@ class BotModel:
             dbq.db_query_nrt()
         if str(query[0]) == '-t' and user_id in bot_config.grant_id:
             surname = str(query[1])
-            t_day = str(datetime.date.today().day)
-            t_month = str(datetime.date.today().month)
-            t_year = str(datetime.date.today().year)
-            t_hours = str(query[2])
-            t_resp = str(query[3])
-            query = "INSERT INTO public.skipped(surname, s_day, s_month, s_year, s_hours, respectfully) VALUES('" + surname + "', '" + t_day + "', '" + t_month + "', '" + t_year + "', '" + t_hours + "', '" + t_resp + "')"
+            date = str(datetime.datetime.today().strftime("%d.%m.%Y"))
+            hours = str(query[2])
+            resp = str(query[3])
+            query = "INSERT INTO public.skipped(surname, date, hours, respectfully) VALUES('" + surname + "', '" + date + "', '" + hours + "', '" + resp + "')"
             dbq = DbQuery.Query(query)
             dbq.db_query_nrt()
-            query2 = "UPDATE public." + bot_config.report_name + " SET hours = hours + '" + t_hours + "', respectfully = respectfully + '" + t_resp + "' WHERE surname = '" + surname + "'"
+            query2 = "UPDATE public." + bot_config.report_name + " SET hours = hours + '" + hours + "', respectfully = respectfully + '" + resp + "' WHERE surname = '" + surname + "'"
             dbq2 = DbQuery.Query(query2)
             dbq2.db_query_nrt()
             return 'Вы успешно добавили часы пропусков в количестве \n' + \
-                   t_hours + ' - общих часов \n' + \
-                   t_resp + ' - уважительных часов студенту ' + surname + ' за \n' + \
-                   str(datetime.date.today())
+                   hours + ' - общих часов \n' + \
+                   resp + ' - уважительных часов студенту ' + surname + ' за \n' + \
+                   date
         elif str(query[0]) == '-d' and user_id in bot_config.grant_id:
-            if str(query[3]) == bot_config.report_date:
-                surname = str(query[1])
-                t_day = str(query[2])
-                t_month = str(query[3])
-                t_year = str(query[4])
-                t_hours = str(query[5])
-                t_resp = str(query[6])
-                query = "INSERT INTO public.skipped(surname,s_day,s_month,s_year,s_hours,respectfully) VALUES('" + surname + "', '" + t_day + "', '" + t_month + "', '" + t_year + "', '" + t_hours + "', '" + t_resp + "')"
-                dbq = DbQuery.Query(query)
-                dbq.db_query_nrt()
-                query2 = "UPDATE public." + bot_config.report_name + " SET hours = hours + '" + t_hours + "', respectfully = respectfully + '" + t_resp + "' WHERE surname = '" + surname + "'"
-                dbq2 = DbQuery.Query(query2)
-                dbq2.db_query_nrt()
-                return 'Вы успешно добавили часы пропусков в количестве \n' + \
-                       t_hours + ' - общих часов \n' + \
-                       t_resp + ' - уважительных часов студенту ' + surname + ' за \n' + \
-                       t_day + '.' + t_month + '.' + t_year
-            else:
-                return 'Ошибка выполнения команды: некорректная дата(месяц и день пишутся без нуля)'
+            surname = str(query[1])
+            date = str(query[2])
+            hours = str(query[3])
+            resp = str(query[4])
+            query = "INSERT INTO public.skipped(surname, date, hours, respectfully) VALUES('" + surname + "', '" + date + "', '" + hours + "', '" + resp + "')"
+            dbq = DbQuery.Query(query)
+            dbq.db_query_nrt()
+            query2 = "UPDATE public." + bot_config.report_name + " SET hours = hours + '" + hours + "', respectfully = respectfully + '" + resp + "' WHERE surname = '" + surname + "'"
+            dbq2 = DbQuery.Query(query2)
+            dbq2.db_query_nrt()
+            return 'Вы успешно добавили часы пропусков в количестве \n' + \
+                   hours + ' - общих часов \n' + \
+                   resp + ' - уважительных часов студенту ' + surname + ' за \n' + \
+                   date
         elif str(query[0]) == '-m':
             if self.report_existence_check():
                 if len(query) > 1:
@@ -243,21 +236,23 @@ class BotModel:
                         if self.surname_check(str(query[1])):
                             surname = str(query[1])
                             msg = 'Количество пропусков за текущий месяц студента ' + surname + ': \n'
-                            query = "SELECT s_day,s_hours,respectfully FROM public.skipped WHERE surname = '" + surname + "' AND s_month = " + bot_config.report_date + ""
+                            query = "SELECT date, hours, respectfully FROM public.skipped WHERE surname = '" + surname + "'"
                             dbq = DbQuery.Query(query)
                             student_report = dbq.db_query_wrt()
                             for row in student_report:
-                                day = str(row[0])
-                                hours = str(row[1])
-                                resp = str(row[2])
-                                st_msg = day + '.' + bot_config.report_date + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
-                                msg = msg + st_msg
+                                month = str(row[0])
+                                month.split(".")
+                                if str(month[1] == bot_config.report_date):
+                                    hours = str(row[1])
+                                    resp = str(row[2])
+                                    st_msg = month[0] + '.' + month[1] + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
+                                    msg = msg + st_msg
                             return msg
                         else:
                             return 'Ошибка выполнения команды: неверно введена фамилия'
                 else:
                     if user_id in bot_config.grant_id:
-                        query = "SELECT * FROM public." + bot_config.report_name + ""
+                        query = "SELECT * FROM public." + bot_config.report_name + " ORDER BY id ASC"
                         dbq = DbQuery.Query(query)
                         report = dbq.db_query_wrt()
                         student_skip = ''
@@ -276,15 +271,18 @@ class BotModel:
                         for row in sel_srn_db:
                             surname = str(row[0])
                         msg = 'Количество пропусков за текущий месяц студента ' + surname + ': \n'
-                        query2 = "SELECT s_day,s_hours,respectfully FROM public.skipped WHERE surname = '" + surname + "' AND s_month = " + bot_config.report_date + ""
+                        query2 = "SELECT date, hours, respectfully FROM public.skipped WHERE surname = '" + surname + "'"
                         dbq2 = DbQuery.Query(query2)
                         student_report = dbq2.db_query_wrt()
                         for row in student_report:
-                            day = str(row[0])
-                            hours = str(row[1])
-                            resp = str(row[2])
-                            st_msg = day + '.' + bot_config.report_date + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
-                            msg = msg + st_msg
+                            month = str(row[0])
+                            month.split(".")
+                            if str(month[1] == bot_config.report_date):
+                                hours = str(row[1])
+                                resp = str(row[2])
+                                st_msg = month[0] + '.' + month[
+                                    1] + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
+                                msg = msg + st_msg
                         return msg
             else:
                 return 'Отчета по пропускам за текущий месяц еще не существует'
@@ -382,7 +380,7 @@ class BotModel:
 
         """
         if from_id in bot_config.grant_id:
-            values = args.split()
+            values = args.split(", ")
             exam_name = str(values[0])
             exam_type = str(values[1])
             exam_date = str(values[2])
