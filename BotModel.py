@@ -239,15 +239,18 @@ class BotModel:
                             query = "SELECT date, hours, respectfully FROM public.skipped WHERE surname = '" + surname + "'"
                             dbq = DbQuery.Query(query)
                             student_report = dbq.db_query_wrt()
-                            for row in student_report:
-                                month = str(row[0])
-                                month.split(".")
-                                if str(month[1] == bot_config.report_date):
-                                    hours = str(row[1])
-                                    resp = str(row[2])
-                                    st_msg = month[0] + '.' + month[1] + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
-                                    msg = msg + st_msg
-                            return msg
+                            if len(student_report) == 0:
+                                return 'Нет пропущеных пар за этот месяц у студента ' + surname
+                            else:
+                                for row in student_report:
+                                    s_date = str(row[0])
+                                    month = s_date.split(".")
+                                    if str(month[1] == bot_config.report_date):
+                                        hours = str(row[1])
+                                        resp = str(row[2])
+                                        st_msg = month[0] + '.' + month[1] + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
+                                        msg = msg + st_msg
+                                return msg
                         else:
                             return 'Ошибка выполнения команды: неверно введена фамилия'
                 else:
@@ -274,16 +277,19 @@ class BotModel:
                         query2 = "SELECT date, hours, respectfully FROM public.skipped WHERE surname = '" + surname + "'"
                         dbq2 = DbQuery.Query(query2)
                         student_report = dbq2.db_query_wrt()
-                        for row in student_report:
-                            month = str(row[0])
-                            month.split(".")
-                            if str(month[1] == bot_config.report_date):
-                                hours = str(row[1])
-                                resp = str(row[2])
-                                st_msg = month[0] + '.' + month[
-                                    1] + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
-                                msg = msg + st_msg
-                        return msg
+                        if len(student_report) == 0:
+                            return 'Нет пропущеных пар за этот месяц у студента ' + surname
+                        else:
+                            for row in student_report:
+                                s_date = str(row[0])
+                                month = s_date.split(".")
+                                if str(month[1] == bot_config.report_date):
+                                    hours = str(row[1])
+                                    resp = str(row[2])
+                                    st_msg = month[0] + '.' + month[
+                                        1] + ' - ' + hours + ' часов, из них ' + resp + ' по ув. причине \n'
+                                    msg = msg + st_msg
+                            return msg
             else:
                 return 'Отчета по пропускам за текущий месяц еще не существует'
         elif str(query[0]) == '-s' and len(query) > 1 and user_id in bot_config.grant_id:
@@ -329,7 +335,54 @@ class BotModel:
                 return bot_config.skip_help
             else:
                 return bot_config.skip_help_st
-        elif (str(query[0]) == '-t' or str(query[0]) == '-d' or (str(query[0]) == '-s' and len(
+
+        elif str(query[0]) == '-r' and user_id in bot_config.grant_id:
+            query = "SELECT * FROM public.skipped ORDER BY id_skip DESC LIMIT 1"
+            dbq = DbQuery.Query(query)
+            result = dbq.db_query_wrt()
+            for row in result:
+                last_id = str(row[0])
+                surname = str(row[1])
+                hours = str(row[3])
+                resp = str(row[4])
+            query2 = "DELETE FROM public.skipped WHERE id_skip = '" + last_id + "'"
+            dbq2 = DbQuery.Query(query2)
+            dbq2.db_query_nrt()
+            query3 = "UPDATE public." + bot_config.report_name + " SET hours = hours - '" + hours + "', respectfully = respectfully - '" + resp + "' WHERE surname = '" + surname + "'"
+            dbq3 = DbQuery.Query(query3)
+            dbq3.db_query_nrt()
+            return "Изменение отменено"
+        elif str(query[0]) == '-t:' and user_id in bot_config.grant_id:
+            del query[0]
+            skip_str = ' '.join(query)
+            skip_arr = skip_str.split('; ')
+            date = str(datetime.datetime.today().strftime("%d.%m.%Y"))
+            msg = 'Вы успешно добавили часы пропусков за ' + date + ' следующим студентам: \n'
+            for row in skip_arr:
+                arr = row.split(' ')
+                surname = arr[0]
+                hours = arr[1]
+                resp = arr[2]
+                query = "INSERT INTO public.skipped(surname, date, hours, respectfully) VALUES('" + surname + "', '" + date + "', '" + hours + "', '" + resp + "')"
+                dbq = DbQuery.Query(query)
+                dbq.db_query_nrt()
+                query2 = "UPDATE public." + bot_config.report_name + " SET hours = hours + '" + hours + "', respectfully = respectfully + '" + resp + "' WHERE surname = '" + surname + "'"
+                dbq2 = DbQuery.Query(query2)
+                dbq2.db_query_nrt()
+                msg = msg + surname + ' - ' + hours + ' часов(из них ' + resp + ' по ув. причине) \n'
+            return msg
+        elif str(query[0]) == '-st' and user_id in bot_config.grant_id:
+            query = "SELECT surname, hours, respectfully FROM public.skipped WHERE date = '" + bot_config.report_today + "'"
+            dbq = DbQuery.Query(query)
+            skip_list = dbq.db_query_wrt()
+            msg = 'Список пропусков за сегодня: \n'
+            for row in skip_list:
+                surname = str(row[0])
+                hours = str(row[1])
+                resp = str(row[2])
+                msg = msg + surname + ' - ' + hours + ' часов(из них ' + resp + ' по ув. причине) \n'
+            return msg
+        elif (str(query[0]) == '-t' or str(query[0]) == '-r' or str(query[0]) == '-t:' or str(query[0]) == '-st' or str(query[0]) == '-d' or (str(query[0]) == '-s' and len(
                 query) > 1) or (str(query[0]) == '-m' and len(query) > 1)) and user_id not in bot_config.grant_id:
             return bot_config.error_access_denied
         else:
